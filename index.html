@@ -365,6 +365,8 @@
     flash: 0,      // screen flash alpha
     vignette: 0.85,
 
+
+    invulnUntil: 0,
     dt: 0,
     t: 0
   };
@@ -757,9 +759,31 @@
     G.running = true;
     G.combo = 0;
 
-    // breathing room
-    enemies.splice(0, Math.min(7, enemies.length));
-    bullets.length = 0;
+    // 1) Janela de invulnerabilidade (anti-trava e anti-morte instantânea)
+    G.invulnUntil = G.t + 1.25;
+
+    // 2) Em vez de apagar inimigos (isso travava a wave), empurra eles pra longe
+    const pad = 220;
+    for(const e of enemies){
+      const dx = e.x - G.cx;
+      const dy = e.y - G.cy;
+      const len = Math.hypot(dx,dy) || 1;
+      e.x = G.cx + (dx/len) * pad + (Math.random()-0.5)*40;
+      e.y = G.cy + (dy/len) * pad + (Math.random()-0.5)*40;
+      e.speed *= 0.78; // respira 1 segundo
+    }
+
+    // 3) Remove projéteis inimigos que podem dar hit instantâneo
+    for(let i=bullets.length-1;i>=0;i--){
+      if(bullets[i].enemyShot) bullets.splice(i,1);
+    }
+
+    // 4) Se por algum motivo não tiver inimigo na tela, cria os faltantes
+    const alive = enemies.length;
+    const remaining = Math.max(0, (G.enemiesToSpawn - G.enemiesKilledThisWave) - alive);
+    if(remaining > 0){
+      spawnWaveEnemies(remaining);
+    }
 
     addParticles(G.cx, G.cy, 190, 220, 840, 1.10, 2.5);
     addShockwave(G.cx, G.cy, 190, 2.0);
@@ -869,6 +893,9 @@
 
       const dC = Math.hypot(e.x - G.cx, e.y - G.cy);
       if(dC < 18){
+        if(G.t < G.invulnUntil){
+          // invulnerável após revive
+        } else 
         if(G.shield > 0){
           G.shield = 0;
           addParticles(G.cx, G.cy, 190, 260, 900, 1.22, 2.6);
@@ -890,6 +917,10 @@
       if(!b.enemyShot) continue;
       const d = Math.hypot(b.x - p.x, b.y - p.y);
       if(d < (G.playerR + b.r + 2)){
+        if(G.t < G.invulnUntil){
+          bullets.splice(i,1);
+          continue;
+        }
         bullets.splice(i,1);
         if(G.shield > 0){
           G.shield = 0;

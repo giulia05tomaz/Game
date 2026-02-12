@@ -340,8 +340,7 @@
     playerR: 12,
 
     fireRate: 4.5,
-    shotCooldown: 0,
-    bulletSpeed: 780,
+        bulletSpeed: 780,
     bulletDamage: 1,
     critChance: 0.08,
     critMult: 2.5,
@@ -520,24 +519,24 @@
   }
 
   // Input
-  let firing = false;
-  function setFiring(v){
-    firing = v;
-    hintEl.style.opacity = v ? 0 : 1;
-  }
+  let lastClickTime = 0;
   function onDown(e){
     if(G.gameOver) return;
     if(G.pausedForUpgrade) return;
-    setFiring(true);
+
+    const nowClick = performance.now();
+    // pequeno debounce para evitar disparo duplicado do mesmo clique
+    if(nowClick - lastClickTime > 40){
+      shoot();
+      lastClickTime = nowClick;
+    }
+
+    hintEl.style.opacity = 0;
     e.preventDefault?.();
   }
-  function onUp(){ setFiring(false); }
 
   const wrap = document.getElementById('wrap');
   wrap.addEventListener('pointerdown', onDown);
-  wrap.addEventListener('pointerup', onUp);
-  wrap.addEventListener('pointercancel', onUp);
-  wrap.addEventListener('pointerleave', onUp);
 
   // Shooting
   function playerPos(){
@@ -835,11 +834,8 @@
 
     G.flash = Math.max(0, G.flash - dt * 1.8);
 
-    G.shotCooldown -= dt;
-    if(firing && G.shotCooldown <= 0){
-      shoot();
-      G.shotCooldown = 1 / G.fireRate;
-    }
+    // Removido auto-fire baseado em fireRate
+
 
     // bullets
     for(let i=bullets.length-1;i>=0;i--){
